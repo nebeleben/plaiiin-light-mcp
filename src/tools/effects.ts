@@ -340,7 +340,7 @@ export function registerEffectsTools(server: McpServer, ctx: ToolContext): void 
 
   server.registerTool('library_list', {
     title: 'List the local library',
-    description: 'List what is saved in the library on this computer (~/.plaiiin/lamps/library): effects, images or scenes. Read-only.',
+    description: 'List what is saved in the local library of this plugin, on this computer: effects, images or scenes. Read-only.',
     inputSchema: { kind: z.enum(['effects', 'images', 'scenes']) },
     annotations: ro,
   }, async ({ kind }) => guard(async () => result({ kind, names: library.list(kind) })));

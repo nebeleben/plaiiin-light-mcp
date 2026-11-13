@@ -106,7 +106,7 @@ export class FleetStore {
 
   private save(): void {
     if (this.locked) {
-      throw new Error(`${this.locked}; not overwriting it — fix the file (or move it away) and restart Claude Code`);
+      throw new Error(`${this.locked}; not overwriting it — fix the file (or move it away) and restart the assistant`);
     }
     mkdirSync(this.dir, { recursive: true });
     const tmp = `${this.file}.${process.pid}.tmp`;

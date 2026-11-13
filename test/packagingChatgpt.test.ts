@@ -13,8 +13,9 @@ const json = (p: string) => JSON.parse(readFileSync(p, 'utf8'));
 const launch = join(dir, 'bin/launch');
 
 /** All files under `d`, relative, sorted. */
+// Another test file may be running the build right now: its in-flight temp files are not part of the result.
 const files = (d: string): string[] => readdirSync(d, { recursive: true, withFileTypes: true })
-  .filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name).slice(d.length + 1)).sort();
+  .filter((e) => e.isFile() && !/\.tmp-\d+(-\d+)?$/.test(e.name)).map((e) => join(e.parentPath, e.name).slice(d.length + 1)).sort();
 
 // The Claude Code public repo carries no plugin-chatgpt/ folder: there this whole file is skipped.
 describe.skipIf(!existsSync(join(dir, '.codex-plugin/plugin.json')))('ChatGPT plugin packaging', () => {
@@ -50,12 +51,12 @@ describe.skipIf(!existsSync(join(dir, '.codex-plugin/plugin.json')))('ChatGPT pl
   });
 
   it('ships bundle, notices and skills; the same ones as the Claude Code target', () => {
-    expect(files(join(dir, 'dist'))).toEqual(['index.js', 'preview-worker.mjs']);
+    expect(files(join(dir, 'dist'))).toEqual(['index.js', 'package.json', 'preview-worker.mjs']);
     expect(files(join(dir, 'skills'))).toEqual(files(join(root, 'skills')));
     for (const f of files(join(root, 'skills'))) expect(readFileSync(join(dir, 'skills', f), 'utf8'), f).toBe(readFileSync(join(root, 'skills', f), 'utf8'));
     expect(statSync(join(dir, 'THIRD-PARTY-NOTICES.txt')).size).toBeGreaterThan(1000);
     if (!existsSync(join(claude, '.claude-plugin/plugin.json'))) return;   // the ChatGPT public repo has no plugin/
-    for (const f of ['dist/index.js', 'dist/preview-worker.mjs', 'THIRD-PARTY-NOTICES.txt'])
+    for (const f of ['dist/index.js', 'dist/package.json', 'dist/preview-worker.mjs', 'THIRD-PARTY-NOTICES.txt'])
       expect(readFileSync(join(dir, f)).equals(readFileSync(join(claude, f))), f).toBe(true);
   });
 

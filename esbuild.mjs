@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { build } from 'esbuild';
 import { writeNotices } from './scripts/notices.mjs';
@@ -50,6 +50,11 @@ const worker = await build({
   target: 'node20',
   legalComments: 'none',
 });
+
+// Installed, dist/ has no package.json above it, and Node before 20.19 / 22.7 would then read
+// index.js as CommonJS. This one says what it is. (Written like every other output: complete or not at all.)
+await writeFile(`${first.dir}/dist/package.json.tmp-${process.pid}`, '{"type":"module"}\n');
+await rename(`${first.dir}/dist/package.json.tmp-${process.pid}`, `${first.dir}/dist/package.json`);
 
 // legalComments are stripped above; the bundled packages' licence notices ship in this file instead.
 await writeNotices([server.metafile, worker.metafile], `${first.dir}/THIRD-PARTY-NOTICES.txt`);

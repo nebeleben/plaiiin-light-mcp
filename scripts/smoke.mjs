@@ -11,14 +11,17 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { presentTargets } from './targets.mjs';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const ip = process.argv[2];
 if (!ip) { console.error('usage: node scripts/smoke.mjs <lamp-ip>'); process.exit(64); }
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dist = join(root, 'plugin/dist/index.js');
-if (!existsSync(dist)) { console.error('plugin/dist/index.js missing — run npm run build first'); process.exit(1); }
+// whichever packaging folder this tree has; the bundle is the same in each
+const target = presentTargets(root)[0];
+const dist = target ? join(root, target.dir, 'dist/index.js') : undefined;
+if (!dist || !existsSync(dist)) { console.error('the built bundle is missing — run npm run build first'); process.exit(1); }
 
 // Is it there at all? (Report unreachable instead of a confusing tool failure.)
 try {

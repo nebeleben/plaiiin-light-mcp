@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -170,6 +170,19 @@ describe('built plugin server', () => {
     expect(r.stderr.trim().split('\n')).toHaveLength(1);
     expect(r.stderr).toMatch(/^plaiiin-lamps: PLAIIIN_LAMPS_PROFILE must be/);
     expect(r.stdout).toBe('');
+  });
+
+  it('the installed bundle starts as an ES module on every supported Node', () => {
+    // Installed, dist/ has no package.json above it. Node before 20.19 / 22.7 then reads index.js as
+    // CommonJS and dies on its first import; --no-experimental-detect-module reproduces that here.
+    expect(JSON.parse(readFileSync(join(plugin, 'dist/package.json'), 'utf8'))).toEqual({ type: 'module' });
+    const alone = mkdtempSync(join(tmpdir(), 'installed-'));
+    cpSync(join(plugin, 'dist'), join(alone, 'dist'), { recursive: true });
+    const r = spawnSync(process.execPath, ['--no-experimental-detect-module', join(alone, 'dist/index.js')], {
+      env: { ...process.env, PLAIIIN_LAMPS_PROFILE: '../elsewhere' }, input: '', encoding: 'utf8', timeout: 20_000,
+    });
+    expect(r.stderr).toMatch(/^plaiiin-lamps: PLAIIIN_LAMPS_PROFILE must be/);   // it ran; it did not fail to parse
+    expect(r.status).toBe(1);
   });
 
   it('bundles the server and the preview worker', () => {
