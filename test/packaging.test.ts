@@ -7,7 +7,10 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const root = resolve(__dirname, '..');
-const plugin = join(root, 'plugin');
+// Each public repo carries one packaging folder. The checks that are about the server, the build
+// and the skills run against whichever is here; the Claude Code specifics are skipped without it.
+const hasClaude = existsSync(join(root, 'plugin/.claude-plugin/plugin.json'));
+const plugin = join(root, hasClaude ? 'plugin' : 'plugin-chatgpt');
 // Build once for the whole file: the tool checks below run against the bundle Claude Code would start.
 beforeAll(() => { execFileSync(process.execPath, ['esbuild.mjs'], { cwd: root, stdio: 'ignore' }); }, 60_000);
 
@@ -26,17 +29,20 @@ function frontmatter(path: string): Record<string, string> {
 }
 
 describe('plugin packaging', () => {
-  it('plugin.json and marketplace.json agree on the plugin name', () => {
+  it('one version everywhere', () => {
+    // The release refuses to publish unless the tag agrees with package.json and the target's manifest.
+    const pkg = json(join(root, 'package.json'));
+    expect(readFileSync(join(root, 'src/server.ts'), 'utf8')).toContain(`export const SERVER_VERSION = '${pkg.version}';`);
+    expect(json(join(root, 'package-lock.json')).version).toBe(pkg.version);
+    const manifests = ['plugin/.claude-plugin/plugin.json', 'plugin-chatgpt/.codex-plugin/plugin.json'].filter((m) => existsSync(join(root, m)));
+    expect(manifests.length).toBeGreaterThan(0);
+    for (const m of manifests) expect(json(join(root, m)).version, m).toBe(pkg.version);
+  });
+
+  it.skipIf(!hasClaude)('plugin.json and marketplace.json agree on the plugin name', () => {
     const manifest = json(join(plugin, '.claude-plugin/plugin.json'));
     const market = json(join(root, '.claude-plugin/marketplace.json'));
     expect(manifest.name).toBe('plaiiin-lamps');
-    // One version, three places: the release refuses to publish unless they agree with the tag.
-    const pkg = json(join(root, 'package.json'));
-    expect(manifest.version).toBe(pkg.version);
-    expect(readFileSync(join(root, 'src/server.ts'), 'utf8')).toContain(`export const SERVER_VERSION = '${pkg.version}';`);
-    expect(json(join(root, 'package-lock.json')).version).toBe(pkg.version);
-    const chatgpt = join(root, 'plugin-chatgpt/.codex-plugin/plugin.json');   // absent in the Claude Code public repo
-    if (existsSync(chatgpt)) expect(json(chatgpt).version).toBe(pkg.version);
     expect(manifest.author).toEqual({ name: 'plaiiin' });
     expect(market.name).toBe('plaiiin-lamps');
     expect(market.owner).toEqual({ name: 'plaiiin' });
@@ -48,7 +54,7 @@ describe('plugin packaging', () => {
     expect(market.plugins[0].version).toBeUndefined();   // plugin.json is the only version source
   });
 
-  it('.mcp.json starts the bundled server', () => {
+  it.skipIf(!hasClaude)('.mcp.json starts the bundled server', () => {
     const mcp = json(join(plugin, '.mcp.json'));
     expect(mcp.mcpServers.lamps).toEqual({ command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/dist/index.js'] });
   });
@@ -79,7 +85,7 @@ describe('plugin packaging', () => {
     }
   });
 
-  it('commands have descriptions; compose takes arguments', () => {
+  it.skipIf(!hasClaude)('commands have descriptions; compose takes arguments', () => {
     const lamps = frontmatter(join(plugin, 'commands/lamps.md'));
     const compose = frontmatter(join(plugin, 'commands/compose.md'));
     expect(lamps.description).toBeTruthy();
@@ -95,7 +101,7 @@ describe('plugin packaging', () => {
       const used = [...text.matchAll(/`((?:lamps?|effects?|image|images|scenes?|swarms|stream|streams|firmware|library)_[a-z_]+)`/g)].map((m) => m[1]!);
       for (const t of used) expect(names.has(t), `${s} mentions ${t}`).toBe(true);
     }
-    for (const c of ['lamps.md', 'compose.md']) {
+    for (const c of hasClaude ? ['lamps.md', 'compose.md'] : []) {
       const text = readFileSync(join(plugin, 'commands', c), 'utf8');
       const used = [...text.matchAll(/`((?:lamps?|effects?|swarms)_[a-z_]+)`/g)].map((m) => m[1]!);
       for (const t of used) expect(names.has(t), `${c} mentions ${t}`).toBe(true);
