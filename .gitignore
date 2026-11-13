@@ -2,3 +2,6 @@ node_modules/
 plugin/dist/
 plugin/THIRD-PARTY-NOTICES.txt
 plugin/skills/
+plugin-chatgpt/dist/
+plugin-chatgpt/skills/
+plugin-chatgpt/THIRD-PARTY-NOTICES.txt

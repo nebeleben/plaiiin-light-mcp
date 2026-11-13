@@ -1,6 +1,6 @@
 {
   "name": "plaiiin-lamp-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Local MCP server (stdio) that lets Claude Code control PlaiiinLight lamps on the LAN",
   "type": "module",

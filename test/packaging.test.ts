@@ -35,6 +35,8 @@ describe('plugin packaging', () => {
     expect(manifest.version).toBe(pkg.version);
     expect(readFileSync(join(root, 'src/server.ts'), 'utf8')).toContain(`export const SERVER_VERSION = '${pkg.version}';`);
     expect(json(join(root, 'package-lock.json')).version).toBe(pkg.version);
+    const chatgpt = join(root, 'plugin-chatgpt/.codex-plugin/plugin.json');   // absent in the Claude Code public repo
+    if (existsSync(chatgpt)) expect(json(chatgpt).version).toBe(pkg.version);
     expect(manifest.author).toEqual({ name: 'plaiiin' });
     expect(market.name).toBe('plaiiin-lamps');
     expect(market.owner).toEqual({ name: 'plaiiin' });
