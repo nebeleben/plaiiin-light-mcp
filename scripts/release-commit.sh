@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Publishes one release of the plugin to the public repo's default branch.
 #
-#   scripts/release-commit.sh <version> <remote-url>
+#   scripts/release-commit.sh <version> <remote-url> <claudecode|chatgpt>
 #
 # Run at the root of the mirrored tree (this directory's parent is the repo root there), after
-# `npm run build`. It makes a commit whose tree is HEAD's tracked files plus the built bundle and
-# the third-party notices (both git-ignored, so they are added explicitly), with the remote's
+# `npm run build`. It makes a commit whose tree is HEAD's tracked files plus what the build wrote
+# for the given target — bundle, skills and third-party notices, all git-ignored and therefore
+# added explicitly — with the remote's
 # current `main` as parent, and pushes it as `main` together with the tag v<version> in one atomic
 # push. `main` therefore only ever fast-forwards and never exists without a bundle.
 #
@@ -15,20 +16,28 @@ set -euo pipefail
 
 die() { echo "release-commit: $*" >&2; exit 1; }
 
-[ $# -eq 2 ] || die "usage: release-commit.sh <version> <remote-url>"
+[ $# -eq 3 ] || die "usage: release-commit.sh <version> <remote-url> <claudecode|chatgpt>"
 VERSION="$1"
 REMOTE="$2"
+TARGET="$3"
+# Each target is one packaging folder with its own manifest (see scripts/targets.mjs).
+case "$TARGET" in
+  claudecode) DIR=plugin;         MANIFEST=plugin/.claude-plugin/plugin.json ;;
+  chatgpt)    DIR=plugin-chatgpt; MANIFEST=plugin-chatgpt/.codex-plugin/plugin.json ;;
+  *) die "unknown target '$TARGET' (claudecode or chatgpt)" ;;
+esac
 # What must exist after a build, and what goes into the release on top of the tracked files:
-# all of plugin/dist/ (whatever the build wrote there) and the notices.
-REQUIRED=(plugin/dist/index.js plugin/dist/preview-worker.mjs plugin/THIRD-PARTY-NOTICES.txt)
-OUTPUTS=(plugin/dist plugin/THIRD-PARTY-NOTICES.txt)
+# everything the build wrote for this target — its dist/, its copy of the skills, the notices.
+REQUIRED=("$DIR/dist/index.js" "$DIR/dist/preview-worker.mjs" "$DIR/THIRD-PARTY-NOTICES.txt")
+OUTPUTS=("$DIR/dist" "$DIR/skills" "$DIR/THIRD-PARTY-NOTICES.txt")
 # -c credential.helper= : never let a helper store a token that is part of the remote URL.
 GIT=(git -c credential.helper=)
 
 cd "$(git rev-parse --show-toplevel)"
 
 version_of() { node -p "JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).version" "$1"; }
-PLUGIN_VERSION="$(version_of plugin/.claude-plugin/plugin.json)"
+[ -f "$MANIFEST" ] || die "this tree has no $TARGET target ($MANIFEST)"
+PLUGIN_VERSION="$(version_of "$MANIFEST")"
 PACKAGE_VERSION="$(version_of package.json)"
 if [ "$VERSION" != "$PLUGIN_VERSION" ] || [ "$VERSION" != "$PACKAGE_VERSION" ]; then
   die "version mismatch (tag $VERSION, plugin.json $PLUGIN_VERSION, package.json $PACKAGE_VERSION)"
@@ -37,6 +46,7 @@ fi
 for f in "${REQUIRED[@]}"; do
   [ -s "$f" ] || die "bundle missing — run npm run build ($f)"
 done
+[ -d "$DIR/skills" ] || die "bundle missing — run npm run build ($DIR/skills)"
 
 # Asked once, up front: a failed ls-remote must not read as "nothing published yet".
 REFS="$("${GIT[@]}" ls-remote "$REMOTE" "refs/tags/v$VERSION" refs/heads/main 2>/dev/null)" \
