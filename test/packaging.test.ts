@@ -42,6 +42,11 @@ describe('plugin packaging', () => {
     const manifests = presentTargets(root).map((t) => t.manifest);
     expect(manifests.length).toBeGreaterThan(0);
     for (const m of manifests) expect(json(join(root, m)).version, m).toBe(pkg.version);
+    const serverJson = join(root, 'npm/server.json');   // the MCP Registry entry of the npm target
+    if (existsSync(serverJson)) {
+      expect(json(serverJson).version).toBe(pkg.version);
+      expect(json(serverJson).packages[0].version).toBe(pkg.version);
+    }
   });
 
   it.skipIf(!hasClaude)('plugin.json and marketplace.json agree on the plugin name', () => {

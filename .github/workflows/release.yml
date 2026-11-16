@@ -5,7 +5,8 @@
 # that commit holds). This workflow
 #   1. rebuilds everything from the tagged source and fails if it differs from the published files,
 #   2. publishes the npm/ folder of that very commit to npm as plaiiinlight-mcp@X.Y.Z,
-#   3. creates the GitHub Release.
+#   3. lists that version in the official MCP Registry (npm/server.json),
+#   4. creates the GitHub Release.
 # So what `npx plaiiinlight-mcp` downloads is the tree this repository shows at the tag, and it is
 # only published once the comparison passed.
 #
@@ -71,6 +72,50 @@ jobs:
           else
             npm publish --access public
           fi
+      # ── MCP Registry (registry.modelcontextprotocol.io) ──────────────────────────────────────
+      # The official registry lists this server as io.github.nebeleben/plaiiinlight-mcp, described
+      # by npm/server.json. It proves ownership by finding that name ("mcpName") inside the npm
+      # package, so it can only be told once npm actually serves this version — which takes a few
+      # minutes after `npm publish` returns. Authentication is this job's GitHub identity (OIDC):
+      # running in a repository of the user nebeleben is what grants the io.github.nebeleben/ names.
+      - name: Wait until npm serves this version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          for i in $(seq 1 90); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/plaiiinlight-mcp/-/plaiiinlight-mcp-$VERSION.tgz")" = "200" ]; then
+              echo "npm serves plaiiinlight-mcp@$VERSION"; exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::npm did not serve plaiiinlight-mcp@$VERSION within 30 minutes"; exit 1
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Download and verify mcp-publisher
+        env:
+          MCP_PUBLISHER_VERSION: v1.8.9
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$RUNNER_TEMP/$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$RUNNER_TEMP/$archive"
+          tar xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" mcp-publisher
+      - name: Publish to the MCP Registry
+        working-directory: npm
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # A re-run after a later step failed must not trip over its own earlier success.
+          if [ "$(curl -s -o /dev/null -w '%{http_code}' "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.nebeleben%2Fplaiiinlight-mcp/versions/$VERSION")" = "200" ]; then
+            echo "io.github.nebeleben/plaiiinlight-mcp $VERSION is already in the MCP Registry — not publishing again"
+          else
+            "$RUNNER_TEMP/mcp-publisher" login github-oidc
+            "$RUNNER_TEMP/mcp-publisher" publish
+          fi
       - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -83,5 +128,6 @@ jobs:
           Setup and examples: https://github.com/nebeleben/plaiiin-light-mcp#readme
 
           Published to npm with provenance from this tag: https://www.npmjs.com/package/plaiiinlight-mcp/v/${GITHUB_REF_NAME#v}
+          Listed in the official MCP Registry as io.github.nebeleben/plaiiinlight-mcp.
           The bundle in this release was rebuilt from this tag's source by this workflow and found identical.
           EOF
