@@ -74,7 +74,8 @@ describe.skipIf(!hasTarget(root, 'npm'))('npm package plaiiinlight-mcp', () => {
     expect(sj.$schema).toBe('https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json');
     expect(sj.version).toBe(pkg.version);
     expect(sj.description.length).toBeLessThanOrEqual(100);
-    expect(sj.description).toMatch(/macOS/);
+    // the listing describes what the server does; it does not narrow it to one operating system
+    expect(sj.description).not.toMatch(/macOS|Windows|Linux/i);
     expect(sj.title.length).toBeLessThanOrEqual(100);
     expect(sj.repository).toEqual({ url: 'https://github.com/nebeleben/plaiiin-light-mcp', source: 'github', subfolder: 'npm' });
     expect(sj.packages).toHaveLength(1);
