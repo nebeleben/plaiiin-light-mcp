@@ -172,7 +172,7 @@ for each program.
 
 - **Lamps and access** — find lamps, list them with their state, add a shared lamp, forget one.
 - **Control** — power, colour, brightness, mode, play, next, previous, stop.
-- **Effects** — write an effect script, preview it locally as a strip of frames, check and compile
+- **Effects** — write an effect script, preview it locally as a picture of its first frames, check and compile
   it on the lamp, upload it, tune it, copy it to other lamps, keep a local library.
 - **Images** — draw pixel art or send a PNG, save, show, label, copy, delete.
 - **Scenes** — capture what a lamp shows, edit, activate, copy between lamps.

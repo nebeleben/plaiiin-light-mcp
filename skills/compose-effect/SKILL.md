@@ -17,10 +17,13 @@ once per LED per frame. Work on one lamp first; copy to others only after the us
    neighbours), a strip is `w×1`, a panel is flat. Read the prompt; it says what looks good.
 3. **Write the script** (contract below). Keep it small.
 4. **Preview locally with `effect_preview`** (`source`, `lamp` — or `w`/`h` —, `frames`, `fps`,
-   `params`). Nothing is sent to the lamp. It returns a PNG strip (frames left to right, (0,0)
-   top-left) — **look at the image** and check it matches the idea: motion between frames, colours,
-   nothing stuck or black (a warning appears when every frame is black). Fix and preview again
-   until it looks right. Use enough frames/fps to see the motion (e.g. 16 frames at 10 fps).
+   `params`). Nothing is sent to the lamp. It returns one picture of the frames, already enlarged
+   (each frame about 192 px; frames in reading order, left to right then top to bottom, (0,0)
+   top-left of each frame) — **look at the image** and check it matches the idea: motion between
+   frames, colours, nothing stuck or black (a warning appears when every frame is black). Fix and
+   preview again until it looks right. Use enough frames/fps to see the motion (e.g. 16 frames at
+   10 fps). When you show the user a preview, show this picture as it came back: it is sized for
+   viewing. Do not redraw the frames yourself at lamp resolution — a 16×16 image is a speck.
 5. **`effect_validate`** on the lamp (its own validator, nothing stored), then **`effect_compile`**
    (reports `bytecodeBytes`). On `{valid: false, error}` fix the script with the lamp's error text
    and go back to step 4.

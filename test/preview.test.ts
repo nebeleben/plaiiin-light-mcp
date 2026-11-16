@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PNG } from 'pngjs';
 import { inspectScript, renderFrames } from '../src/preview/shade';
-import { framesToPngStrip } from '../src/preview/png';
+import { framesToPng, previewLayout } from '../src/preview/png';
 
 const RED = 'function shade(x, y, idx, frame, base, params) { emit(255, 0, 0); }';
 const one = { w: 1, h: 1, frames: 1, fps: 10 };
@@ -111,48 +111,63 @@ describe('preview sandbox (scripts are untrusted)', () => {
   }, 30000);
 });
 
-describe('framesToPngStrip', () => {
-  it('puts the frames side by side, nearest-neighbour scaled', async () => {
+describe('preview picture', () => {
+  const blank = (w: number, h: number) => new Uint8Array(w * h * 3);
+  const solid = (w: number, h: number, r: number, g: number, b: number) => { const f = blank(w, h); for (let i = 0; i < f.length; i += 3) { f[i] = r; f[i + 1] = g; f[i + 2] = b; } return f; };
+  const px = (png: PNG, x: number, y: number) => [...png.data.subarray((y * png.width + x) * 4, (y * png.width + x) * 4 + 4)];
+  const size = (frames: Uint8Array[], w: number, h: number, scale?: number) => { const p = PNG.sync.read(framesToPng(frames, w, h, scale)); return [p.width, p.height]; };
+
+  it('enlarges each frame so it can be looked at: about 192 px on its long side', () => {
+    // a 16×16 panel used to come out as 32 px frames — too small to judge an effect by
+    expect(previewLayout(8, 16, 16)).toEqual({ scale: 12, columns: 5, rows: 2, shown: 8, gap: 6 });
+    expect(size(Array(8).fill(blank(16, 16)), 16, 16)).toEqual([5 * 192 + 4 * 6, 2 * 192 + 6]);
+    expect(previewLayout(8, 16, 8)).toMatchObject({ scale: 12, columns: 5, rows: 2, shown: 8 });      // tower: 192×96 frames
+    expect(previewLayout(2, 8, 8)).toMatchObject({ scale: 24, columns: 2, rows: 1, shown: 2 });       // cube face
+    expect(previewLayout(1, 64, 64)).toMatchObject({ scale: 3, columns: 1, rows: 1, shown: 1 });
+  });
+
+  it('wraps into rows about 1024 px wide instead of one long strip', () => {
+    expect(previewLayout(16, 16, 16)).toMatchObject({ scale: 12, columns: 5, rows: 4, shown: 16 });
+    const [width, height] = size(Array(16).fill(blank(16, 16)), 16, 16);
+    expect(width).toBeLessThanOrEqual(1024);
+    expect(height).toBe(4 * 192 + 3 * 6);
+  });
+
+  it('puts the frames in reading order, apart; gaps and unused cells stay transparent', () => {
+    const frames = [0, 1, 2, 3, 4, 5].map((i) => solid(16, 16, 40 * i + 10, 0, 0));
+    const png = PNG.sync.read(framesToPng(frames, 16, 16));     // 5 per row → frame 5 starts the second row
+    const cell = 192 + 6;
+    expect(px(png, 0, 0)).toEqual([10, 0, 0, 255]);
+    expect(px(png, 191, 191)).toEqual([10, 0, 0, 255]);
+    expect(px(png, 193, 50)[3]).toBe(0);                          // the gap between frame 0 and 1
+    expect(px(png, cell, 0)).toEqual([50, 0, 0, 255]);
+    expect(px(png, 4 * cell + 5, 100)).toEqual([170, 0, 0, 255]);
+    expect(px(png, 3, cell + 3)).toEqual([210, 0, 0, 255]);
+    expect(px(png, cell + 3, cell + 3)[3]).toBe(0);               // no seventh frame
+  });
+
+  it('keeps an explicit scale, nearest-neighbour', async () => {
     const frames = await renderFrames(RED, { w: 4, h: 2, frames: 3, fps: 10 });
-    const png = PNG.sync.read(framesToPngStrip(frames, 4, 2, 5));
-    expect(png.width).toBe(4 * 3 * 5);
-    expect(png.height).toBe(2 * 5);
-    expect([...png.data.subarray(0, 4)]).toEqual([255, 0, 0, 255]);
+    const png = PNG.sync.read(framesToPng(frames, 4, 2, 5));
+    expect(previewLayout(3, 4, 2, 5)).toEqual({ scale: 5, columns: 3, rows: 1, shown: 3, gap: 3 });
+    expect([png.width, png.height]).toEqual([3 * 20 + 2 * 3, 10]);
+    expect(px(png, 0, 0)).toEqual([255, 0, 0, 255]);
   });
 
-  it('defaults to a scale that makes the strip at least 256 px wide', () => {
-    const f = new Uint8Array(8 * 8 * 3);
-    const png = PNG.sync.read(framesToPngStrip([f, f], 8, 8));
-    expect(png.width).toBeGreaterThanOrEqual(256);
-    expect(png.width % 16).toBe(0);
-    expect(png.height).toBe(png.width / 2);
+  it('gives a one-pixel-high strip lamp some height', () => {
+    expect(previewLayout(8, 128, 1)).toEqual({ scale: 8, columns: 1, rows: 8, shown: 8, gap: 4 });   // 1024×8 per frame, one per row
+    expect(size(Array(8).fill(blank(128, 1)), 128, 1)).toEqual([1024, 8 * 8 + 7 * 4]);
   });
 
-  it('never exceeds 4096 px: frames that do not fit are left out', () => {
-    const w = 256, f = new Uint8Array(w * 1 * 3);
-    const png = PNG.sync.read(framesToPngStrip(Array(60).fill(f), w, 1));
-    expect(png.width).toBeLessThanOrEqual(4096);
-    expect(png.width % w).toBe(0);
-    expect(PNG.sync.read(framesToPngStrip(Array(60).fill(f), w, 1, 3)).width).toBeLessThanOrEqual(4096);
-    expect(PNG.sync.read(framesToPngStrip([new Uint8Array(4096 * 3)], 4096, 1, 8)).width).toBe(4096); // scale lowered
-    expect(() => framesToPngStrip([new Uint8Array(16384 * 3)], 16384, 1)).toThrow(/16384 px wide/);
-  });
-
-  it('never exceeds 4096 px in height either: scale from both sides, too-tall frames refused', () => {
-    const tall = PNG.sync.read(framesToPngStrip([new Uint8Array(1 * 2048 * 3)], 1, 2048));
-    expect(tall.height).toBeLessThanOrEqual(4096);
-    expect(PNG.sync.read(framesToPngStrip([new Uint8Array(1 * 1024 * 3)], 1, 1024, 8)).height).toBe(4096); // scale lowered
-    expect(() => framesToPngStrip([new Uint8Array(16384 * 3)], 1, 16384)).toThrow(/16384 px tall/);
-  });
-
-  it('keeps distinct pixels where they are', () => {
-    const f = new Uint8Array([10, 20, 30, 40, 50, 60]); // 2x1
-    const png = PNG.sync.read(framesToPngStrip([f], 2, 1, 2));
-    const px = (x: number, y: number) => [...png.data.subarray((y * png.width + x) * 4, (y * png.width + x) * 4 + 3)];
-    expect(px(0, 0)).toEqual([10, 20, 30]);
-    expect(px(1, 1)).toEqual([10, 20, 30]);
-    expect(px(2, 0)).toEqual([40, 50, 60]);
-    expect(px(3, 1)).toEqual([40, 50, 60]);
+  it('never exceeds 4096 px either way: frames that do not fit are left out', () => {
+    const l = previewLayout(100, 256, 256);
+    expect(l).toMatchObject({ scale: 1, columns: 3, shown: 45 });
+    const [width, height] = size(Array(100).fill(blank(256, 256)), 256, 256);
+    expect(width).toBeLessThanOrEqual(4096);
+    expect(height).toBeLessThanOrEqual(4096);
+    expect(size([blank(4096, 1)], 4096, 1, 8)[0]).toBe(4096);          // scale lowered
+    expect(() => framesToPng([blank(16384, 1)], 16384, 1)).toThrow(/16384 px wide/);
+    expect(() => framesToPng([], 4, 4)).toThrow(/no frames/);
   });
 });
 

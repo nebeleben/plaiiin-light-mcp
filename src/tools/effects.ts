@@ -8,7 +8,7 @@ import {
   builtIn, listing, present, putSource, putTunes, readTunes, values, type ParamSchema,
 } from '../lamp/scripts';
 import { LampHttpError } from '../lamp/errors';
-import { framesToPngStrip } from '../preview/png';
+import { framesToPng, previewLayout } from '../preview/png';
 import { apiGrid, checkGrid } from '../lamp/grid';
 import { MAX_FRAMES, previewScript, type Rgb } from '../preview/shade';
 import type { FleetLamp } from '../store/fleet';
@@ -182,7 +182,9 @@ export function registerEffectsTools(server: McpServer, ctx: ToolContext): void 
     title: 'Preview effect locally',
     description:
       'Render a `shade()` script on this computer with the lamp runtime (no lamp needed, nothing is sent) and return the ' +
-      'first frames as one PNG strip: frames left to right, frame i at time i·1000/fps ms, pixel (0,0) top-left. Give ' +
+      'first frames as one PNG, already enlarged for viewing (each frame about 192 px): frames in reading order — left ' +
+      'to right, then top to bottom, `columns` per row as the text part says — frame i at time i·1000/fps ms, pixel ' +
+      '(0,0) top-left of each frame. Show this picture to the user as it is. Give ' +
       '`lamp` to use its grid and base color, or `w` and `h`. `params` overrides @param defaults. The text part lists the ' +
       'grid, the params found and a warning when every frame is black. Read-only.',
     inputSchema: {
@@ -216,15 +218,20 @@ export function registerEffectsTools(server: McpServer, ctx: ToolContext): void 
     } catch (e) {
       return failure(errorText(e));
     }
-    const png = framesToPngStrip(rendered, grid.w, grid.h);
+    const png = framesToPng(rendered, grid.w, grid.h);
     const width = png.readUInt32BE(16), height = png.readUInt32BE(20);
-    const shown = width / (grid.w * (height / grid.h));
+    const layout = previewLayout(rendered.length, grid.w, grid.h);
+    const shown = layout.shown;
     const known = new Set(info.params.map((p) => p.name));
     const unknown = Object.keys(params ?? {}).filter((k) => !known.has(k));
     const dark = rendered.every((f) => f.every((v) => v === 0));
     const summary = {
       ok: true, grid, frames, fps, ...(base ? { base } : {}),
-      image: { width, height, layout: 'frames left to right', ...(shown < frames ? { framesShown: shown, note: 'the strip is capped at 4096 px; later frames are left out' } : {}) },
+      image: {
+        width, height, columns: layout.columns, rows: layout.rows, scale: layout.scale, gap: layout.gap,
+        layout: 'frames in reading order: left to right, then top to bottom; each lamp pixel is a scale×scale block; frames are gap px apart',
+        ...(shown < frames ? { framesShown: shown, note: 'the picture is capped at 4096 px; later frames are left out' } : {}),
+      },
       params: info.params.map((p) => ({ name: p.name, min: p.min, max: p.max, default: p.def, value: params?.[p.name] ?? p.def, description: p.desc, type: p.type })),
       state: { frame: info.frameState.map((s) => s.name), pixel: info.pixelState.map((s) => s.name) },
       ...(info.mode ? { mode: info.mode } : {}),

@@ -75,17 +75,18 @@ describe('effect_validate / effect_compile', () => {
 });
 
 describe('effect_preview', () => {
-  it('returns a PNG strip and a summary', async () => {
+  it('returns an enlarged PNG of the frames and a summary', async () => {
     const t = await harness();
     const r = await t.client.callTool({ name: 'effect_preview', arguments: { source: SRC, w: 4, h: 2, frames: 3 } });
     const content = r.content as Array<{ type: string; data?: string; mimeType?: string; text?: string }>;
     const img = content.find((c) => c.type === 'image')!;
     expect(img.mimeType).toBe('image/png');
     const png = PNG.sync.read(Buffer.from(img.data!, 'base64'));
-    expect(png.width).toBeGreaterThanOrEqual(256);
-    expect(png.width % 12).toBe(0);
+    expect([png.width, png.height]).toEqual([3 * 192 + 2 * 24, 96]);     // each 4×2 frame enlarged to 192×96, 24 px apart
     const summary = JSON.parse(content.find((c) => c.type === 'text')!.text!);
     expect(summary).toMatchObject({ ok: true, grid: { w: 4, h: 2 }, frames: 3, fps: 10 });
+    expect(summary.image).toMatchObject({ width: 624, height: 96, columns: 3, rows: 1, scale: 48, gap: 24 });
+    expect(summary.image.framesShown).toBeUndefined();
     expect(summary.params).toEqual([expect.objectContaining({ name: 'speed', min: 0, max: 10, default: 3, value: 3 })]);
   });
 

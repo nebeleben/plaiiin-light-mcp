@@ -59,6 +59,17 @@ describe('plugin packaging', () => {
     expect(market.plugins[0].version).toBeUndefined();   // plugin.json is the only version source
   });
 
+  it.skipIf(!hasClaude)('has an icon the Claude apps and the plugin directory accept', () => {
+    // .claude-plugin/icon.png: a square PNG, 512–2048 px a side, under 2 MB (claude plugin validate, ICON_MISSING)
+    const png = readFileSync(join(plugin, '.claude-plugin/icon.png'));
+    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    const w = png.readUInt32BE(16), h = png.readUInt32BE(20);
+    expect(w).toBe(h);
+    expect(w).toBeGreaterThanOrEqual(512);
+    expect(w).toBeLessThanOrEqual(2048);
+    expect(png.length).toBeLessThan(2 * 1024 * 1024);
+  });
+
   it.skipIf(!hasClaude)('.mcp.json starts the bundled server', () => {
     const mcp = json(join(plugin, '.mcp.json'));
     expect(mcp.mcpServers.lamps).toEqual({ command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/dist/index.js'] });
