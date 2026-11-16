@@ -64,7 +64,8 @@ describe('plugin packaging', () => {
     expect(mcp.mcpServers.lamps).toEqual({ command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/dist/index.js'] });
   });
 
-  it('ships no package.json or node_modules at the plugin root', () => {
+  // A plugin folder is not a package; the npm target of course has a package.json (see packagingNpm.test.ts).
+  it.skipIf(target.name === 'npm')('ships no package.json or node_modules at the plugin root', () => {
     expect(existsSync(join(plugin, 'package.json'))).toBe(false);
     expect(existsSync(join(plugin, 'node_modules'))).toBe(false);
   });
