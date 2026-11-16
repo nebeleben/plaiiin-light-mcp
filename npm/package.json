@@ -1,6 +1,6 @@
 {
   "name": "plaiiinlight-mcp",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "MCP server for PlaiiinLight lamps — control, compose effects for and manage the lamps on your local network from any MCP program.",
   "keywords": ["mcp", "mcp-server", "modelcontextprotocol", "plaiiinlight", "lamps", "led"],
   "license": "Apache-2.0",
@@ -11,6 +11,7 @@
     "type": "git",
     "url": "git+https://github.com/nebeleben/plaiiin-light-mcp.git"
   },
+  "mcpName": "io.github.nebeleben/plaiiinlight-mcp",
   "type": "module",
   "bin": {
     "plaiiinlight-mcp": "bin/plaiiinlight-mcp.mjs"

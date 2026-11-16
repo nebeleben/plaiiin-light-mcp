@@ -1,0 +1,43 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.nebeleben/plaiiinlight-mcp",
+  "title": "PlaiiinLight lamps",
+  "description": "Control PlaiiinLight LED lamps on your local network: colour, effects, images, scenes. macOS.",
+  "version": "0.3.4",
+  "websiteUrl": "https://plaiiin-light.com/integrations.html#mcp",
+  "repository": {
+    "url": "https://github.com/nebeleben/plaiiin-light-mcp",
+    "source": "github",
+    "subfolder": "npm"
+  },
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/nebeleben/plaiiin-light-mcp/main/npm/icon.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "plaiiinlight-mcp",
+      "version": "0.3.4",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--profile",
+          "description": "A short name for the AI program you are setting up, for example gemini or cursor (lowercase letters, digits, hyphens). Required: each profile keeps its own lamp list and its own lamp keys, so use a different name in each program.",
+          "isRequired": true,
+          "format": "string",
+          "placeholder": "gemini"
+        }
+      ]
+    }
+  ]
+}

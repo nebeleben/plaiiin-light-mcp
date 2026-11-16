@@ -122,15 +122,16 @@ changes brightness and restores it. It uploads, deletes, pairs, renames and upda
 ## Releasing
 
 Releases are cut in the private mono-repo. There is **one version** for everything here; it lives
-in five places, and `npm test` fails while they disagree:
+in these places, and `npm test` fails while they disagree:
 
 - `package.json` (then `npm install --package-lock-only` to carry it into `package-lock.json`)
 - `SERVER_VERSION` in `src/server.ts`
 - `plugin/.claude-plugin/plugin.json`
 - `plugin-chatgpt/.codex-plugin/plugin.json`
 - `npm/package.json`
+- `npm/server.json` (the MCP Registry entry: `version` and `packages[0].version`)
 
-1. Set the new version in those five places. Commit.
+1. Set the new version in those places. Commit.
 2. Tag that commit for each target you want to release, and push the tag:
    `claudecode-vX.Y.Z`, `chatgpt-vX.Y.Z` and/or `mcp-vX.Y.Z`.
 
@@ -140,7 +141,9 @@ calls `scripts/release-commit.sh`, which pushes one commit (source plus the buil
 together with the tag `vX.Y.Z`. In the public repository, `ci` and `release` rebuild and compare;
 `release` then creates the GitHub Release. For the npm target, `release` in the public repository
 also publishes the `npm/` folder of the release commit to npm, after the comparison passed, using
-npm trusted publishing — no npm token exists in either repository.
+npm trusted publishing — no npm token exists in either repository — and then lists that version in
+the official MCP Registry from `npm/server.json` (authenticated by the job's GitHub identity; the
+registry checks that the npm package carries the matching `mcpName`).
 
 The tag must match the version in that target's manifest and in `package.json`, or nothing is
 published. A published version is never released again: fix forward with a new version. A target

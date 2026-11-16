@@ -8,6 +8,9 @@ them for firmware updates.
 It runs entirely on your computer and talks to the lamps over your own network. You decide, per
 lamp, what the assistant is allowed to do.
 
+It is listed in the official [MCP Registry](https://registry.modelcontextprotocol.io) as
+`io.github.nebeleben/plaiiinlight-mcp`, so MCP programs that browse the registry can find it by name.
+
 Using Claude Code or the ChatGPT app? They have their own plugins, which install in one step:
 [plaiiin-light-claudecode](https://github.com/nebeleben/plaiiin-light-claudecode) and
 [plaiiin-light-chatgpt](https://github.com/nebeleben/plaiiin-light-chatgpt). This package is for

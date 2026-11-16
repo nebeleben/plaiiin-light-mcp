@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -6,6 +6,9 @@ import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { hasTarget } from './targets';
+
+// These tests start git / npm / node processes; on a busy machine the default 10 s is too tight.
+vi.setConfig({ testTimeout: 60_000 });
 
 const root = resolve(__dirname, '..');
 const dir = join(root, 'npm');
@@ -60,6 +63,27 @@ describe.skipIf(!hasTarget(root, 'npm'))('npm package plaiiinlight-mcp', () => {
     expect(p.dependencies).toBeUndefined();
     expect(p.scripts).toBeUndefined();
     expect(p.private).toBeUndefined();
+  });
+
+  it('server.json describes the package for the MCP Registry', () => {
+    const p = json(join(dir, 'package.json'));
+    const sj = json(join(dir, 'server.json'));
+    // the registry verifies ownership by finding this name inside the published npm package
+    expect(p.mcpName).toBe('io.github.nebeleben/plaiiinlight-mcp');
+    expect(sj.name).toBe(p.mcpName);
+    expect(sj.$schema).toBe('https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json');
+    expect(sj.version).toBe(pkg.version);
+    expect(sj.description.length).toBeLessThanOrEqual(100);
+    expect(sj.description).toMatch(/macOS/);
+    expect(sj.title.length).toBeLessThanOrEqual(100);
+    expect(sj.repository).toEqual({ url: 'https://github.com/nebeleben/plaiiin-light-mcp', source: 'github', subfolder: 'npm' });
+    expect(sj.packages).toHaveLength(1);
+    expect(sj.packages[0]).toMatchObject({ registryType: 'npm', identifier: 'plaiiinlight-mcp', version: pkg.version, runtimeHint: 'npx', transport: { type: 'stdio' } });
+    // the one thing the server insists on: a client that reads this prompts the user for it
+    expect(sj.packages[0].packageArguments).toEqual([expect.objectContaining({ type: 'named', name: '--profile', isRequired: true, format: 'string' })]);
+    expect(sj.packages[0].packageArguments[0].description.length).toBeGreaterThan(40);
+    for (const icon of sj.icons) expect(icon.src).toMatch(/^https:\/\/raw\.githubusercontent\.com\/nebeleben\/plaiiin-light-mcp\/main\/npm\//);
+    expect(existsSync(join(dir, 'icon.png'))).toBe(true);
   });
 
   it('the packed file list is exactly the published surface', () => {
