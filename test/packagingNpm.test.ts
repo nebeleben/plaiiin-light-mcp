@@ -63,7 +63,9 @@ describe.skipIf(!hasTarget(root, 'npm'))('npm package plaiiinlight-mcp', () => {
   });
 
   it('the packed file list is exactly the published surface', () => {
-    const out = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+    // its own cache: the result must not depend on the state of the machine's ~/.npm
+    const cache = mkdtempSync(join(tmpdir(), 'npmcache-'));
+    const out = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json', '--cache', cache], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
     expect(out[0].files.map((f: { path: string }) => f.path).sort()).toEqual([
       'LICENSE', 'README.md', 'THIRD-PARTY-NOTICES.txt', 'bin/plaiiinlight-mcp.mjs',
       'dist/index.js', 'dist/package.json', 'dist/preview-worker.mjs', 'package.json',
@@ -103,6 +105,16 @@ describe.skipIf(!hasTarget(root, 'npm'))('npm package plaiiinlight-mcp', () => {
       expect(oneLine(r.stderr), String(args)).toBe(true);
       expect(existsSync(join(r.home, '.plaiiin')), String(args)).toBe(false);
     }
+  });
+
+  it('a refusal stays one short line whatever was passed', () => {
+    const r = run(['--' + 'x'.repeat(100_000)]);
+    expect(r.status).toBe(2);
+    expect(oneLine(r.stderr)).toBe(true);
+    expect(r.stderr.length).toBeLessThan(400);
+    const nl = run(['--profile', 'a\nb']);
+    expect(nl.status).toBe(2);
+    expect(oneLine(nl.stderr)).toBe(true);
   });
 
   it('--version and --help do not start the server', () => {

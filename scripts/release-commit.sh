@@ -5,7 +5,7 @@
 #
 # Run at the root of the mirrored tree (this directory's parent is the repo root there), after
 # `npm run build`. It makes a commit whose tree is HEAD's tracked files plus what the build wrote
-# for the given target — bundle, skills and third-party notices, all git-ignored and therefore
+# for the given target — bundle, notices, and skills or licence copy, all git-ignored and therefore
 # added explicitly — with the remote's
 # current `main` as parent, and pushes it as `main` together with the tag v<version> in one atomic
 # push. `main` therefore only ever fast-forwards and never exists without a bundle.
@@ -43,7 +43,7 @@ version_of() { node -p "JSON.parse(require('node:fs').readFileSync(process.argv[
 PLUGIN_VERSION="$(version_of "$MANIFEST")"
 PACKAGE_VERSION="$(version_of package.json)"
 if [ "$VERSION" != "$PLUGIN_VERSION" ] || [ "$VERSION" != "$PACKAGE_VERSION" ]; then
-  die "version mismatch (tag $VERSION, plugin.json $PLUGIN_VERSION, package.json $PACKAGE_VERSION)"
+  die "version mismatch (tag $VERSION, ${MANIFEST##*/} $PLUGIN_VERSION, package.json $PACKAGE_VERSION)"
 fi
 
 for f in "${REQUIRED[@]}"; do

@@ -152,6 +152,10 @@ describe('release-commit.sh', () => {
     const bad = run(repo3, '0.3.0', remote3, 'npm');
     expect(bad.status).not.toBe(0);
     expect(bad.stderr).toContain('release-commit: bundle missing');
+    // a wrong tag names the npm manifest, not a plugin's
+    const repo4 = makeRepo('0.3.0', 'npm');
+    expect(run(repo4, '0.4.0', remote3, 'npm').stderr).toContain('release-commit: version mismatch (tag 0.4.0, package.json 0.3.0, package.json 0.3.0)');
+    rmSync(repo4, { recursive: true, force: true });
     for (const d of [repo2, remote2, repo3, remote3]) rmSync(d, { recursive: true, force: true });
   });
 

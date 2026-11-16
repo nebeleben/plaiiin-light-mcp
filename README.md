@@ -37,13 +37,19 @@ program you are setting up — `gemini`, `cursor`, anything in lowercase letters
 Each profile has its own lamp list and its own keys, so a lamp key you gave to one AI program is
 not quietly used by another. Use a different name in each program.
 
-If the server does not start, the program probably cannot find `npx` (programs started from the
-Finder do not see your shell's `PATH`). Run `which npx` in a terminal and use that full path
-instead of `npx`.
+If the server does not start, the program probably cannot find Node.js: programs started from the
+Finder do not see your shell's `PATH`. Run `which npx` in a terminal, use that full path as the
+command, and also put its folder on the entry's `PATH` — `npx` itself needs to find `node` there.
+In the JSON forms below that is one more line, for example:
 
-To stay on one version, name it: `plaiiinlight-mcp@0.3.0`. Without a version, `npx` uses the
-newest one it has downloaded before; `npx -y plaiiinlight-mcp@latest --profile <name>` always
-fetches the newest release.
+```json
+"env": { "PATH": "/opt/homebrew/bin:/usr/bin:/bin" }
+```
+
+with `/opt/homebrew/bin` replaced by the folder `which npx` printed.
+
+To stay on one version, name it: `plaiiinlight-mcp@0.3.0`. Without a version, a current npm picks
+up a new release the next time the server starts (very old npm keeps the first one it downloaded).
 
 ## Examples
 
@@ -221,7 +227,8 @@ With `--profile <name>`:
 
 ## Uninstall
 
-Remove the server entry from your AI program's settings. Optionally, for each profile you used:
+Remove the server entry from your AI program's settings. The downloaded package stays in npm's
+cache (`~/.npm/_npx`) until you clear it. Optionally, for each profile you used:
 
 ```sh
 rm -rf ~/.plaiiin/lamps-<name>                                   # lamp list and library

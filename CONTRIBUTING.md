@@ -39,9 +39,10 @@ npm run typecheck
 npm run build       # → <packaging folder>/dist, /skills and /THIRD-PARTY-NOTICES.txt, for each target present
 ```
 
-Each packaging folder ships the bundled `dist/` and no `package.json`/`node_modules`: Node is the
-only runtime requirement. The build is reproducible: the same source gives the same bytes on macOS
-and Linux, and both targets get the identical bundle.
+Each packaging folder ships the bundled `dist/` and no `node_modules`: Node is the only runtime
+requirement (the plugin folders have no `package.json` either; the npm folder is a package without
+dependencies). The build is reproducible: the same source gives the same bytes on macOS and Linux,
+and every target gets the identical bundle.
 
 `npm test` starts with `scripts/check-vendor.mjs`, which compares `vendor/shade-runtime.js` with
 the firmware's copy. Outside the mono-repo that copy is absent and the check only prints a warning.
@@ -72,9 +73,9 @@ npm ci && npm run build
 node npm/bin/plaiiinlight-mcp.mjs --profile dev        # or: (cd npm && npm pack) and npx the tarball
 ```
 
-Both copy the plugin, with the built files, into the assistant's plugin cache; after rebuilding,
-bump the version and install again. A marketplace of the same name from GitHub must be removed
-first.
+The two plugin installs copy the plugin, with the built files, into the assistant's plugin cache;
+after rebuilding, bump the version and install again. A marketplace of the same name from GitHub
+must be removed first. The npm entry runs straight from the checkout.
 
 Two things about the ChatGPT packaging that are easy to break:
 

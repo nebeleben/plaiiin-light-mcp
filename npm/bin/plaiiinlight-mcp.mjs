@@ -15,9 +15,11 @@ const PROFILE = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;   // the server checks
 
 /** One line on stderr, exit 2. stdout stays untouched: it is the protocol channel. */
 function refuse(what) {
-  process.stderr.write(`${NAME}: ${what} — add --profile <name>, for example --profile gemini (one name per AI program; see ${REPO})\n`);
+  process.stderr.write(`${NAME}: ${what} — the command is: npx -y ${NAME} --profile <name>, for example --profile gemini (one name per AI program; see ${REPO})\n`);
   process.exit(2);
 }
+/** A value as it may appear in a message: quoted, on one line, of bounded length. */
+const shown = (v) => JSON.stringify(v.length > 60 ? `${v.slice(0, 60)}…` : v);
 
 const args = process.argv.slice(2);
 
@@ -54,7 +56,7 @@ for (let i = 0; i < args.length; i++) {
   } else if (a.startsWith('--profile=')) {
     value = a.slice('--profile='.length);
   } else {
-    refuse(`unknown argument ${JSON.stringify(a)}`);
+    refuse(`unknown argument ${shown(a)}`);
   }
   if (fromArgs !== undefined) refuse('--profile given more than once');
   fromArgs = value;
@@ -62,10 +64,16 @@ for (let i = 0; i < args.length; i++) {
 
 const profile = fromArgs ?? process.env.PLAIIIN_LAMPS_PROFILE;
 if (profile === undefined) refuse('no profile given');
-if (!PROFILE.test(profile)) refuse(`${JSON.stringify(profile)} is not a usable profile name (1–32 lowercase letters, digits or hyphens)`);
+if (!PROFILE.test(profile)) refuse(`${shown(profile)} is not a usable profile name (1–32 lowercase letters, digits or hyphens)`);
 
 process.env.PLAIIIN_LAMPS_PROFILE = profile;
 // Clients of this package have no "skills": offer the same guides as MCP prompts and resources.
 process.env.PLAIIIN_LAMPS_GUIDANCE = '1';
 
-await import('../dist/index.js');
+try {
+  await import('../dist/index.js');
+} catch (e) {
+  if (e?.code !== 'ERR_MODULE_NOT_FOUND') throw e;
+  process.stderr.write(`${NAME}: the server bundle (dist/index.js) is missing — in a checkout, run npm run build first\n`);
+  process.exit(1);
+}

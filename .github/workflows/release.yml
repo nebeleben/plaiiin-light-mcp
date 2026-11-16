@@ -14,7 +14,7 @@
 # points at this repository and commit. Configured on npmjs.com -> plaiiinlight-mcp -> Settings ->
 # Trusted Publisher (owner nebeleben, repository plaiiin-light-mcp, workflow release.yml).
 # Requirements this file meets: a GitHub-hosted runner, `id-token: write`, Node >= 22.14 and
-# npm >= 11.5.1 (hence the npm upgrade), NO `registry-url` on setup-node (that would write an
+# npm >= 11.5.1 (hence the npm upgrade, to npm 11), NO `registry-url` on setup-node (that would write an
 # .npmrc demanding a token), and npm/package.json's repository.url naming this repository.
 #
 # The 0.0.0* versions on npm are placeholders without code: npm only lets a trusted publisher be
@@ -40,7 +40,9 @@ jobs:
           node-version: 22
           cache: npm
       - name: Upgrade npm (trusted publishing needs >= 11.5.1)
-        run: npm install -g npm@latest
+        # A fixed major: this file is frozen into the release commit, and an npm major released
+        # later must not be what decides whether this version can be published.
+        run: npm install -g npm@11
       - run: npm ci
       - name: Published bundle matches the source
         run: |
