@@ -196,6 +196,19 @@ describe('built plugin server', () => {
     expect(existsSync(join(plugin, 'dist/preview-worker.mjs'))).toBe(true);
   });
 
+  it('tool schemas use only what every MCP host accepts', async () => {
+    // The ChatGPT/Codex host silently drops a tool whose input schema has tuple-style arrays
+    // (`items` as a list, or `prefixItems`): 0.2.0 lost lamp_color, image_draw and scene_put that way.
+    const tupleIn = (n: unknown): boolean => {
+      if (Array.isArray(n)) return n.some(tupleIn);
+      if (n === null || typeof n !== 'object') return false;
+      const o = n as Record<string, unknown>;
+      return Array.isArray(o.items) || 'prefixItems' in o || Object.values(o).some(tupleIn);
+    };
+    const offenders = (await listTools()).filter((t) => tupleIn(t.inputSchema)).map((t) => t.name);
+    expect(offenders).toEqual([]);
+  });
+
   it('lists the tools, each with a description and annotations', async () => {
     const tools = await listTools();
     expect(tools.length).toBeGreaterThanOrEqual(30);

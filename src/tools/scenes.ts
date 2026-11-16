@@ -34,7 +34,7 @@ const sceneDoc = z.object({
   script: z.string().min(1).optional().describe('Effect name (implies js mode); must exist on the lamp'),
   params: z.record(z.string(), z.number()).optional().describe('Tune values for the script'),
   image: z.string().min(1).optional().describe('Saved image id (implies frame mode); ids are per lamp'),
-  color: z.tuple([z.number().int().min(0).max(255), z.number().int().min(0).max(255), z.number().int().min(0).max(255)]).optional(),
+  color: z.array(z.number().int().min(0).max(255)).length(3).optional().describe('[r, g, b] with 0–255 each'),
   brightness: z.number().int().min(0).max(255).optional(),
 }).strict().describe('Scene document; every field optional, an absent field means "leave as is"');
 

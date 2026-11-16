@@ -5,7 +5,7 @@ import { allows, type Need } from '../lamp/access';
 import type { LampClient } from '../lamp/client';
 import { apiGrid, checkGrid } from '../lamp/grid';
 import { LampHttpError } from '../lamp/errors';
-import { gridToRgb, readPng, resizeToRgb, toPng, type Rgba } from '../images/convert';
+import { gridToRgb, readPng, resizeToRgb, toPng, type Rgba, type PixelColor } from '../images/convert';
 import type { FleetLamp } from '../store/fleet';
 import { Library } from '../store/library';
 import { copyImage, findSavedImage, listImages, readImage } from '../sync/copy';
@@ -29,7 +29,8 @@ const ctrlChars = /[\x00-\x1f\x7f]/;
 const label = z.string()
   .refine((s) => Buffer.byteLength(s, 'utf8') <= 32, 'at most 32 bytes (UTF-8)')
   .refine((s) => !ctrlChars.test(s), 'no control characters');
-const colorCell = z.union([z.string(), z.tuple([z.number().int(), z.number().int(), z.number().int()])]);
+// [r, g, b] as an array of exactly three, not z.tuple (see control.ts: some hosts drop tools with tuple schemas).
+const colorCell = z.union([z.string(), z.array(z.number().int()).length(3)]);
 const confirmArg = z.string().optional().describe('Token from a previous needsConfirmation answer');
 const libName = z.string().regex(/^[A-Za-z0-9_-]{1,32}$/, '1–32 letters, digits, _ or -');
 
@@ -104,7 +105,7 @@ export function registerImagesTools(server: McpServer, ctx: ToolContext): void {
     const lbl = args.label || undefined;
     return result({ results: await fanout(ctx, normLamps(args.lamps), IMAGES, async (c, l) => {
       const grid = await gridOf(c, l);
-      const rgb = png ? resizeToRgb(png, grid.w, grid.h) : gridToRgb(args.pixels!, grid.w, grid.h);
+      const rgb = png ? resizeToRgb(png, grid.w, grid.h) : gridToRgb(args.pixels! as PixelColor[][], grid.w, grid.h);   // each cell: a string or exactly three numbers
       await c.sendBinary('POST', '/api/frame', Buffer.from(rgb));
       let id: string | undefined;
       let reused = false;
