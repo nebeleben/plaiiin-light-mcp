@@ -61,15 +61,27 @@ describe('guidance', () => {
     expect(read.contents[0]).toMatchObject({ uri: 'plaiiin-lamps://skills/lamp-access', mimeType: 'text/markdown', text: text('lamp-access') });
   });
 
+  it('with guidance: a tool returns a guide, for clients that only do tools', async () => {
+    const tool = (await client.listTools()).tools.find((t) => t.name === 'lamps_guide')!;
+    expect(tool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
+    expect((tool.inputSchema.properties as { topic: { enum: string[] } }).topic.enum.sort()).toEqual(SKILLS.map((s) => s.name).sort());
+    for (const s of SKILLS) expect(tool.description, s.name).toContain(s.name);
+    const r = await client.callTool({ name: 'lamps_guide', arguments: { topic: 'scenes' } }) as { content: Array<{ type: string; text: string }>; isError?: boolean };
+    expect(r.isError).toBeFalsy();
+    expect(r.content).toEqual([{ type: 'text', text: text('scenes') }]);
+  });
+
   it('with guidance: the instructions say the guides exist', () => {
     expect(client.getInstructions()).toMatch(/plaiiin-lamps:\/\/skills\//);
+    expect(client.getInstructions()).toMatch(/lamps_guide/);
     expect(client.getInstructions()).toContain(plain.getInstructions()!);   // the rest is unchanged
   });
 
-  it('without guidance: no prompts, no resources, instructions unchanged', () => {
+  it('without guidance: no prompts, no resources, no guide tool, instructions unchanged', async () => {
     expect(plain.getServerCapabilities()?.prompts).toBeUndefined();
     expect(plain.getServerCapabilities()?.resources).toBeUndefined();
     expect(plain.getInstructions()).not.toMatch(/skills/);
     expect(plain.getServerCapabilities()?.tools).toBeDefined();
+    expect((await plain.listTools()).tools.some((t) => t.name === 'lamps_guide')).toBe(false);
   });
 });

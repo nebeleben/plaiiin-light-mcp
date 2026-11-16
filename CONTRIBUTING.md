@@ -4,13 +4,14 @@ The plugin is developed in a private mono-repo and mirrored here; issues and pul
 welcome here all the same.
 
 It is a local [MCP](https://modelcontextprotocol.io) server (stdio, Node ≥ 20) plus skills,
-packaged once per assistant. The same source is published to two repositories, each carrying only
-its own packaging folder:
+packaged three ways. The same source is published to three repositories, each carrying only its
+own packaging folder:
 
 | | repository | packaging folder | manifest |
 |---|---|---|---|
 | Claude Code | `nebeleben/plaiiin-light-claudecode` | `plugin/` | `plugin/.claude-plugin/plugin.json` |
 | ChatGPT app, codex CLI | `nebeleben/plaiiin-light-chatgpt` | `plugin-chatgpt/` | `plugin-chatgpt/.codex-plugin/plugin.json` |
+| any MCP program (npm `plaiiinlight-mcp`) | `nebeleben/plaiiin-light-mcp` | `npm/` | `npm/package.json` |
 
 ```
 src/                     server source (TypeScript)
@@ -20,10 +21,12 @@ vendor/shade-runtime.js  the lamps' script runtime, copied from the firmware's w
 scripts/                 targets, build helpers, notices generator, release commit, vendor check, smoke test
 plugin/                  Claude Code packaging: manifest, .mcp.json, commands/
 plugin-chatgpt/          ChatGPT packaging: manifest, .mcp.json, bin/launch, assets/
-  …in both: dist/, skills/, THIRD-PARTY-NOTICES.txt — written by the build, git-ignored on the source branch
+npm/                     the npm package: package.json, bin/plaiiinlight-mcp.mjs, README.md
+  …in each: dist/, THIRD-PARTY-NOTICES.txt, and skills/ (plugins) or LICENSE (npm) — written by
+  the build, git-ignored on the source branch
 ```
 
-A checkout of one public repository has only one of the two packaging folders. The build and the
+A checkout of one public repository has only one of the three packaging folders. The build and the
 tests work on whichever are present (`scripts/targets.mjs`); the tests for an absent target are
 skipped.
 
@@ -62,6 +65,13 @@ codex plugin marketplace add "$PWD"
 codex plugin add plaiiin-lamps@plaiiin-lamps
 ```
 
+Any MCP program, from the npm folder of a checkout:
+
+```sh
+npm ci && npm run build
+node npm/bin/plaiiinlight-mcp.mjs --profile dev        # or: (cd npm && npm pack) and npx the tarball
+```
+
 Both copy the plugin, with the built files, into the assistant's plugin cache; after rebuilding,
 bump the version and install again. A marketplace of the same name from GitHub must be removed
 first.
@@ -86,6 +96,12 @@ automatically usable by another. The server reads its profile from `PLAIIIN_LAMP
 |---|---|---|---|
 | none | Claude Code plugin | `~/.plaiiin/lamps` | `plaiiin-lamp-mcp` |
 | `chatgpt` | `plugin-chatgpt/bin/launch` | `~/.plaiiin/lamps-chatgpt` | `plaiiin-lamp-mcp-chatgpt` |
+| `<name>` | the user, with `--profile <name>` on the npm package | `~/.plaiiin/lamps-<name>` | `plaiiin-lamp-mcp-<name>` |
+
+The npm package's entry (`npm/bin/plaiiinlight-mcp.mjs`) refuses to start without a profile; there
+is no default there. It also sets `PLAIIIN_LAMPS_GUIDANCE=1`, which makes the server offer the
+skills as MCP prompts and resources (`src/guidance.ts`) — generic MCP programs have no skills, the
+plugins do and leave it off.
 
 `PLAIIIN_LAMPS_DIR` overrides the state folder (the tests and the smoke script use a temporary
 one). On systems other than macOS, keys go to `secrets.json` (mode 0600) in that folder instead of
@@ -105,22 +121,25 @@ changes brightness and restores it. It uploads, deletes, pairs, renames and upda
 ## Releasing
 
 Releases are cut in the private mono-repo. There is **one version** for everything here; it lives
-in four places, and `npm test` fails while they disagree:
+in five places, and `npm test` fails while they disagree:
 
 - `package.json` (then `npm install --package-lock-only` to carry it into `package-lock.json`)
 - `SERVER_VERSION` in `src/server.ts`
 - `plugin/.claude-plugin/plugin.json`
 - `plugin-chatgpt/.codex-plugin/plugin.json`
+- `npm/package.json`
 
-1. Set the new version in those four places. Commit.
+1. Set the new version in those five places. Commit.
 2. Tag that commit for each target you want to release, and push the tag:
-   `claudecode-vX.Y.Z` and/or `chatgpt-vX.Y.Z`.
+   `claudecode-vX.Y.Z`, `chatgpt-vX.Y.Z` and/or `mcp-vX.Y.Z`.
 
 For each tag, that target's mirror workflow filters the history to its repository's `source`
 branch (leaving out the other target's folder), runs the type check and the tests, builds, and
 calls `scripts/release-commit.sh`, which pushes one commit (source plus the built files) to `main`
 together with the tag `vX.Y.Z`. In the public repository, `ci` and `release` rebuild and compare;
-`release` then creates the GitHub Release.
+`release` then creates the GitHub Release. For the npm target, `release` in the public repository
+also publishes the `npm/` folder of the release commit to npm, after the comparison passed, using
+npm trusted publishing — no npm token exists in either repository.
 
 The tag must match the version in that target's manifest and in `package.json`, or nothing is
 published. A published version is never released again: fix forward with a new version. A target
