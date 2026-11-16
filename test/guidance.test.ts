@@ -81,6 +81,8 @@ describe('guidance', () => {
     expect(plain.getServerCapabilities()?.prompts).toBeUndefined();
     expect(plain.getServerCapabilities()?.resources).toBeUndefined();
     expect(plain.getInstructions()).not.toMatch(/skills/);
+    // every target: no going around the tools (a host once hid lamp_color and the model used curl)
+    expect(plain.getInstructions()).toMatch(/only through these tools/);
     expect(plain.getServerCapabilities()?.tools).toBeDefined();
     expect((await plain.listTools()).tools.some((t) => t.name === 'lamps_guide')).toBe(false);
   });

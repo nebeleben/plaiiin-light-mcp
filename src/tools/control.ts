@@ -9,7 +9,9 @@ const READ: Need = { minRole: 'user' };
 const PER_LAMP = 'Returns one result per lamp: `{lamp, ok: true, …}` or `{lamp, ok: false, skipped?, reason}`.';
 const NEEDS_CONTROL = 'Needs the `control` permission on AI keys (any user/creator/admin key works).';
 
-const rgb = z.tuple([z.number().int().min(0).max(255), z.number().int().min(0).max(255), z.number().int().min(0).max(255)]);
+// An array of exactly three, not z.tuple: tuple schemas (`items` as a list) make the ChatGPT/Codex
+// host drop the whole tool without a word.
+const rgb = z.array(z.number().int().min(0).max(255)).length(3);
 const color = z.union([z.string().regex(/^#?[0-9a-fA-F]{6}$/, 'a "#rrggbb" hex color'), rgb])
   .describe('"#rrggbb" or [r, g, b] with 0–255 each');
 
@@ -45,7 +47,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
     inputSchema: { lamps: lampsArg, color },
     annotations: ann,
   }, async ({ lamps, color: c0 }) => {
-    const rgbv = toRgb(c0);
+    const rgbv = toRgb(c0 as string | [number, number, number]);   // the schema guarantees exactly three
     return run(lamps, CONTROL, async (c) => { await c.send('POST', '/api/color', { color: rgbv }); return { color: rgbv }; });
   });
 

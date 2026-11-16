@@ -59441,7 +59441,7 @@ var CONTROL = { perm: "control", minRole: "user" };
 var READ = { minRole: "user" };
 var PER_LAMP = "Returns one result per lamp: `{lamp, ok: true, \u2026}` or `{lamp, ok: false, skipped?, reason}`.";
 var NEEDS_CONTROL = "Needs the `control` permission on AI keys (any user/creator/admin key works).";
-var rgb = external_exports.tuple([external_exports.number().int().min(0).max(255), external_exports.number().int().min(0).max(255), external_exports.number().int().min(0).max(255)]);
+var rgb = external_exports.array(external_exports.number().int().min(0).max(255)).length(3);
 var color = external_exports.union([external_exports.string().regex(/^#?[0-9a-fA-F]{6}$/, 'a "#rrggbb" hex color'), rgb]).describe('"#rrggbb" or [r, g, b] with 0\u2013255 each');
 function toRgb(c) {
   if (Array.isArray(c)) return c;
@@ -60586,7 +60586,7 @@ var ID_NOTE = "Image ids (`img-001`, \u2026) are per lamp: the same id on two la
 var imageId = external_exports.string().regex(/^[A-Za-z0-9_-]{1,32}$/, "an image id such as img-001").describe("Image id as listed by images_list (e.g. img-001)");
 var ctrlChars = /[\x00-\x1f\x7f]/;
 var label = external_exports.string().refine((s) => Buffer.byteLength(s, "utf8") <= 32, "at most 32 bytes (UTF-8)").refine((s) => !ctrlChars.test(s), "no control characters");
-var colorCell = external_exports.union([external_exports.string(), external_exports.tuple([external_exports.number().int(), external_exports.number().int(), external_exports.number().int()])]);
+var colorCell = external_exports.union([external_exports.string(), external_exports.array(external_exports.number().int()).length(3)]);
 var confirmArg2 = external_exports.string().optional().describe("Token from a previous needsConfirmation answer");
 var libName = external_exports.string().regex(/^[A-Za-z0-9_-]{1,32}$/, "1\u201332 letters, digits, _ or -");
 var enc4 = (n) => encodeURIComponent(n);
@@ -61107,7 +61107,7 @@ var sceneDoc = external_exports.object({
   script: external_exports.string().min(1).optional().describe("Effect name (implies js mode); must exist on the lamp"),
   params: external_exports.record(external_exports.string(), external_exports.number()).optional().describe("Tune values for the script"),
   image: external_exports.string().min(1).optional().describe("Saved image id (implies frame mode); ids are per lamp"),
-  color: external_exports.tuple([external_exports.number().int().min(0).max(255), external_exports.number().int().min(0).max(255), external_exports.number().int().min(0).max(255)]).optional(),
+  color: external_exports.array(external_exports.number().int().min(0).max(255)).length(3).optional().describe("[r, g, b] with 0\u2013255 each"),
   brightness: external_exports.number().int().min(0).max(255).optional()
 }).strict().describe('Scene document; every field optional, an absent field means "leave as is"');
 var enc5 = (n) => encodeURIComponent(n);
@@ -61873,8 +61873,8 @@ function registerStreamTools(server2, ctx2) {
 
 // src/server.ts
 var SERVER_NAME = "plaiiin-lamps";
-var SERVER_VERSION = "0.3.0";
-var INSTRUCTIONS = 'Controls PlaiiinLight lamps on the local network. Start with lamps_list (or lamps_discover to find lamps). Tools that target lamps take `lamps` as names, deviceIds or "all" and report one result per lamp. Access is per lamp: an AI access key only allows the permissions the owner granted \u2014 a refusal names the missing permission; never try to work around it. Destructive tools first return {needsConfirmation, summary, confirm}: show the summary to the user and call again with confirm only after they agree.';
+var SERVER_VERSION = "0.3.1";
+var INSTRUCTIONS = 'Controls PlaiiinLight lamps on the local network. Start with lamps_list (or lamps_discover to find lamps). Tools that target lamps take `lamps` as names, deviceIds or "all" and report one result per lamp. Access is per lamp: an AI access key only allows the permissions the owner granted \u2014 a refusal names the missing permission; never try to work around it. Destructive tools first return {needsConfirmation, summary, confirm}: show the summary to the user and call again with confirm only after they agree. Reach lamps only through these tools: if one you need seems to be missing, say so instead of calling a lamp\'s web interface or HTTP API yourself.';
 function buildServer(ctx2, opts = {}) {
   const instructions = opts.guidance ? INSTRUCTIONS + GUIDANCE_INSTRUCTIONS : INSTRUCTIONS;
   const server2 = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION }, { instructions });
