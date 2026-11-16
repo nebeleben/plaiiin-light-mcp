@@ -24,7 +24,8 @@ const { stateDir } = profile;
 const registry = new Registry(new FleetStore(stateDir), makeSecrets(stateDir, process.platform, undefined, profile.keychainService));
 const ctx: ToolContext = { registry, confirm: new Confirmations(), stateDir };
 
-const server = buildServer(ctx);
+// PLAIIIN_LAMPS_GUIDANCE=1 is set by the npm package's entry; the plugins leave it unset.
+const server = buildServer(ctx, { guidance: process.env.PLAIIIN_LAMPS_GUIDANCE === '1' });
 await server.connect(new StdioServerTransport());
 
 // Re-read every lamp's access in the background; startup must not wait for slow or offline lamps.
