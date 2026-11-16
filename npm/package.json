@@ -1,6 +1,6 @@
 {
   "name": "plaiiinlight-mcp",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "MCP server for PlaiiinLight lamps — control, compose effects for and manage the lamps on your local network from any MCP program.",
   "keywords": ["mcp", "mcp-server", "modelcontextprotocol", "plaiiinlight", "lamps", "led"],
   "license": "Apache-2.0",
