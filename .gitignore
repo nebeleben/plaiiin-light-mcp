@@ -5,3 +5,6 @@ plugin/skills/
 plugin-chatgpt/dist/
 plugin-chatgpt/skills/
 plugin-chatgpt/THIRD-PARTY-NOTICES.txt
+npm/dist/
+npm/THIRD-PARTY-NOTICES.txt
+npm/LICENSE

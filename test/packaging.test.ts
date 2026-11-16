@@ -6,11 +6,16 @@ import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
+import { firstTarget, hasTarget, presentTargets } from './targets';
+
 const root = resolve(__dirname, '..');
 // Each public repo carries one packaging folder. The checks that are about the server, the build
 // and the skills run against whichever is here; the Claude Code specifics are skipped without it.
-const hasClaude = existsSync(join(root, 'plugin/.claude-plugin/plugin.json'));
-const plugin = join(root, hasClaude ? 'plugin' : 'plugin-chatgpt');
+const target = firstTarget(root);
+const hasClaude = hasTarget(root, 'claudecode');
+const plugin = join(root, target.dir);
+// The npm package ships no skills/ folder (it offers the same text through MCP): check the source there.
+const skillsDir = target.skills ? join(plugin, 'skills') : join(root, 'skills');
 // Build once for the whole file: the tool checks below run against the bundle Claude Code would start.
 beforeAll(() => { execFileSync(process.execPath, ['esbuild.mjs'], { cwd: root, stdio: 'ignore' }); }, 60_000);
 
@@ -34,7 +39,7 @@ describe('plugin packaging', () => {
     const pkg = json(join(root, 'package.json'));
     expect(readFileSync(join(root, 'src/server.ts'), 'utf8')).toContain(`export const SERVER_VERSION = '${pkg.version}';`);
     expect(json(join(root, 'package-lock.json')).version).toBe(pkg.version);
-    const manifests = ['plugin/.claude-plugin/plugin.json', 'plugin-chatgpt/.codex-plugin/plugin.json'].filter((m) => existsSync(join(root, m)));
+    const manifests = presentTargets(root).map((t) => t.manifest);
     expect(manifests.length).toBeGreaterThan(0);
     for (const m of manifests) expect(json(join(root, m)).version, m).toBe(pkg.version);
   });
@@ -65,10 +70,10 @@ describe('plugin packaging', () => {
   });
 
   it('every skill has a description; the expected skills exist', () => {
-    const skills = readdirSync(join(plugin, 'skills'));
+    const skills = readdirSync(join(skillsDir));
     expect(skills.sort()).toEqual(['compose-effect', 'draw-image', 'fleet-ota', 'lamp-access', 'scenes']);
     for (const s of skills) {
-      const fm = frontmatter(join(plugin, 'skills', s, 'SKILL.md'));
+      const fm = frontmatter(join(skillsDir, s, 'SKILL.md'));
       expect(fm.description, s).toBeTruthy();
       expect(fm.description!.length, s).toBeGreaterThan(40);
     }
@@ -76,10 +81,10 @@ describe('plugin packaging', () => {
 
   it('skills come from the shared source and are worded for any assistant', () => {
     const names = readdirSync(join(root, 'skills'));
-    expect(readdirSync(join(plugin, 'skills')).sort()).toEqual([...names].sort());
+    expect(readdirSync(skillsDir).sort()).toEqual([...names].sort());
     for (const s of names) {
       const src = readFileSync(join(root, 'skills', s, 'SKILL.md'), 'utf8');
-      expect(readFileSync(join(plugin, 'skills', s, 'SKILL.md'), 'utf8')).toBe(src);
+      expect(readFileSync(join(skillsDir, s, 'SKILL.md'), 'utf8')).toBe(src);
       // "Claude" may only appear inside a quotation of the app's own UI text
       expect(src.replace(/"[^"\n]*"/g, '').replace(/“[^”\n]*”/g, ''), s).not.toMatch(/\bClaude\b/);
     }
@@ -96,8 +101,8 @@ describe('plugin packaging', () => {
 
   it('skills mention only tools the server has', async () => {
     const names = new Set(await toolNames());
-    for (const s of readdirSync(join(plugin, 'skills'))) {
-      const text = readFileSync(join(plugin, 'skills', s, 'SKILL.md'), 'utf8');
+    for (const s of readdirSync(join(skillsDir))) {
+      const text = readFileSync(join(skillsDir, s, 'SKILL.md'), 'utf8');
       const used = [...text.matchAll(/`((?:lamps?|effects?|image|images|scenes?|swarms|stream|streams|firmware|library)_[a-z_]+)`/g)].map((m) => m[1]!);
       for (const t of used) expect(names.has(t), `${s} mentions ${t}`).toBe(true);
     }

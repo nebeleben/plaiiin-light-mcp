@@ -6,9 +6,11 @@ import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
+import { firstTarget } from './targets';
+
 const root = resolve(__dirname, '..');
 // whichever packaging folder this tree has (a public repo carries only one); the bundle is the same
-const dist = join(root, existsSync(join(root, 'plugin/.claude-plugin/plugin.json')) ? 'plugin' : 'plugin-chatgpt', 'dist/index.js');
+const dist = join(root, firstTarget(root).dir, 'dist/index.js');
 
 describe('built server over stdio', () => {
   beforeAll(() => { execFileSync(process.execPath, ['esbuild.mjs'], { cwd: root }); }, 60_000);

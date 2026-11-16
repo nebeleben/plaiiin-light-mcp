@@ -22,7 +22,7 @@ const raw = {
 // third-party notices and a copy of the shared skills. They are built once, into the first target,
 // and copied to the others, so the targets cannot drift apart.
 const targets = presentTargets(process.cwd());
-if (!targets.length) throw new Error('build: no packaging folder (plugin/, plugin-chatgpt/) found in this tree');
+if (!targets.length) throw new Error('build: no packaging folder (plugin/, plugin-chatgpt/, npm/) found in this tree');
 const [first, ...others] = targets;
 
 const server = await build({
@@ -63,5 +63,8 @@ for (const t of others) {
   await mirrorDir(`${first.dir}/dist`, `${t.dir}/dist`);
   await replaceFile(`${first.dir}/THIRD-PARTY-NOTICES.txt`, `${t.dir}/THIRD-PARTY-NOTICES.txt`);
 }
-// The skills have one source (skills/); each target ships a copy.
-for (const t of targets) await mirrorDir('skills', `${t.dir}/skills`);
+// The skills have one source (skills/); each target that ships skills gets a copy.
+for (const t of targets) {
+  if (t.skills) await mirrorDir('skills', `${t.dir}/skills`);
+  for (const f of t.copies) await replaceFile(f, `${t.dir}/${f}`);
+}
