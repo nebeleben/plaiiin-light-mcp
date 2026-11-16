@@ -1,0 +1,87 @@
+# Runs on the PUBLIC repo (nebeleben/plaiiin-light-mcp). This file lives in public-repo-mcp/workflows/
+# in the private mono-repo and is mirrored to .github/workflows/.
+#
+# Trigger: tag vX.Y.Z, which arrives together with the release commit on main (see ci.yml for what
+# that commit holds). This workflow
+#   1. rebuilds everything from the tagged source and fails if it differs from the published files,
+#   2. publishes the npm/ folder of that very commit to npm as plaiiinlight-mcp@X.Y.Z,
+#   3. creates the GitHub Release.
+# So what `npx plaiiinlight-mcp` downloads is the tree this repository shows at the tag, and it is
+# only published once the comparison passed.
+#
+# npm publishing uses TRUSTED PUBLISHING (OIDC): npm exchanges this job's GitHub Actions identity
+# token for publish rights — no NPM_TOKEN secret exists anywhere, and npm attaches provenance that
+# points at this repository and commit. Configured on npmjs.com -> plaiiinlight-mcp -> Settings ->
+# Trusted Publisher (owner nebeleben, repository plaiiin-light-mcp, workflow release.yml).
+# Requirements this file meets: a GitHub-hosted runner, `id-token: write`, Node >= 22.14 and
+# npm >= 11.5.1 (hence the npm upgrade, to npm 11), NO `registry-url` on setup-node (that would write an
+# .npmrc demanding a token), and npm/package.json's repository.url naming this repository.
+#
+# The 0.0.0* versions on npm are placeholders without code: npm only lets a trusted publisher be
+# added to a package that already exists, so the name was created by hand once. Every other
+# version comes from this workflow.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the GitHub Release
+  id-token: write   # OIDC token for npm trusted publishing + provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Upgrade npm (trusted publishing needs >= 11.5.1)
+        # A fixed major: this file is frozen into the release commit, and an npm major released
+        # later must not be what decides whether this version can be published.
+        run: npm install -g npm@11
+      - run: npm ci
+      - name: Published bundle matches the source
+        run: |
+          # A build from nothing: remove the committed outputs first, so a file the build no
+          # longer writes shows up as deleted.
+          rm -rf npm/dist npm/LICENSE npm/THIRD-PARTY-NOTICES.txt
+          npm run build
+          git diff --exit-code -- npm \
+            || { echo "::error::the committed bundle differs from a fresh build of this source"; exit 1; }
+          # ...and nothing the build writes may be missing from the commit (--ignored: the
+          # outputs are git-ignored on the source branch, so plain status would not list them).
+          EXTRA="$(git status --porcelain --ignored -- npm)"
+          [ -z "$EXTRA" ] || { echo "::error::the build writes files that are not in the release: $EXTRA"; exit 1; }
+      - name: Tag matches the package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./npm/package.json').version")"
+          [ "$TAG" = "$PKG" ] || { echo "::error::tag $TAG != npm/package.json $PKG"; exit 1; }
+      - name: Publish to npm
+        working-directory: npm
+        run: |
+          # A re-run after a later step failed must not trip over its own earlier success.
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$(npm view "plaiiinlight-mcp@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+            echo "plaiiinlight-mcp@$VERSION is already on npm — not publishing again"
+          else
+            npm publish --access public
+          fi
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "plaiiinlight-mcp ${GITHUB_REF_NAME#v}" --notes-file - <<EOF
+          In your AI program's MCP settings (a local, stdio server):
+
+              npx -y plaiiinlight-mcp@${GITHUB_REF_NAME#v} --profile <name>
+
+          Setup and examples: https://github.com/nebeleben/plaiiin-light-mcp#readme
+
+          Published to npm with provenance from this tag: https://www.npmjs.com/package/plaiiinlight-mcp/v/${GITHUB_REF_NAME#v}
+          The bundle in this release was rebuilt from this tag's source by this workflow and found identical.
+          EOF

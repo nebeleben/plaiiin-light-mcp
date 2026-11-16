@@ -1,0 +1,49 @@
+# Runs on the PUBLIC repo (nebeleben/plaiiin-light-mcp). This file lives in public-repo-mcp/workflows/ in
+# the private mono-repo and is mirrored to .github/workflows/.
+#
+# Two branches, two jobs for this workflow:
+#   source — the server's full commit history, mirrored as it is written. No built files.
+#            Here this workflow only builds and tests.
+#   main   — the default branch: one commit per release, holding that release's source AND what
+#            was built from it for the npm package (npm/dist/, the notices, the licence copy).
+#            Here this workflow also rebuilds from the source in the same commit and fails if the
+#            result differs from what was published. The npm package is made from that npm/ folder.
+#
+# Anyone can repeat that comparison from a checkout of main:
+#   npm ci && npm run build && git diff --exit-code -- npm
+name: ci
+
+on:
+  push:
+    branches: [main, source]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Published bundle matches the source
+        if: github.ref_name == 'main'
+        run: |
+          # A build from nothing: remove the committed outputs first, so a file the build no
+          # longer writes shows up as deleted.
+          rm -rf npm/dist npm/LICENSE npm/THIRD-PARTY-NOTICES.txt
+          npm run build
+          git diff --exit-code -- npm \
+            || { echo "::error::the committed bundle differs from a fresh build of this source"; exit 1; }
+          # ...and nothing the build writes may be missing from the commit (--ignored: the
+          # outputs are git-ignored on the source branch, so plain status would not list them).
+          EXTRA="$(git status --porcelain --ignored -- npm)"
+          [ -z "$EXTRA" ] || { echo "::error::the build writes files that are not in the release: $EXTRA"; exit 1; }
