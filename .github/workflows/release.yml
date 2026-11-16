@@ -17,7 +17,7 @@
 # npm >= 11.5.1 (hence the npm upgrade), NO `registry-url` on setup-node (that would write an
 # .npmrc demanding a token), and npm/package.json's repository.url naming this repository.
 #
-# plaiiinlight-mcp@0.0.0 on npm is a placeholder without code: npm only lets a trusted publisher be
+# The 0.0.0* versions on npm are placeholders without code: npm only lets a trusted publisher be
 # added to a package that already exists, so the name was created by hand once. Every other
 # version comes from this workflow.
 name: release

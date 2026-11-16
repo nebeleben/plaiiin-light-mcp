@@ -255,8 +255,8 @@ npm pack plaiiinlight-mcp@0.3.0 && tar -xzf plaiiinlight-mcp-0.3.0.tgz
 diff -r package npm && echo "npm delivers exactly this folder"
 ```
 
-`plaiiinlight-mcp@0.0.0` on npm is an empty placeholder from before the first release (npm needs a
-package to exist before it can be published this way). Every other version comes from here.
+Versions starting with `0.0.0` on npm are empty placeholders from before the first release (npm
+needs a package to exist before it can be published this way). Every other version comes from here.
 
 The version number is shared with the two plugins, so a number may be skipped here when only a
 plugin was released.
