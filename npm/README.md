@@ -18,4 +18,4 @@ another.
 Requirements, examples for popular programs, how to give an assistant access to a lamp, what the
 server talks to and where it stores things: **https://github.com/nebeleben/plaiiin-light-mcp**
 
-macOS, Node.js 20 or newer. Apache-2.0.
+Node.js 20 or newer. Developed and tested on macOS; it also runs on Linux and Windows. Apache-2.0.

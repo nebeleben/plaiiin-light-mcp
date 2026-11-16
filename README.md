@@ -18,10 +18,16 @@ everything else that speaks MCP.
 
 ## Requirements
 
-- **macOS.** Linux and Windows are untested and not released.
+- **macOS, Linux or Windows.** It is developed and tested on macOS. On Linux and Windows it runs
+  with two differences, which we have not tested ourselves: lamp keys are kept in a file only you
+  can read instead of the Keychain, and a share link cannot be read from the clipboard — give the
+  assistant the link itself or a screenshot of the QR code.
 - Node.js 20 or newer (`node --version`).
 - An AI program that can start a local MCP server (often called a "stdio" or "command" server).
 - A PlaiiinLight lamp with firmware 2.8 or newer, on the same network as your computer.
+- No PlaiiinLight app is needed to start: lamps that nobody has paired yet are found on the network
+  and can be used right away. To give the assistant access to a lamp that is paired, you need the
+  PlaiiinLight app (macOS, iPhone, iPad or Android) to create a key for it.
 
 ## Setup — the one thing every program needs
 
@@ -40,8 +46,8 @@ program you are setting up — `gemini`, `cursor`, anything in lowercase letters
 Each profile has its own lamp list and its own keys, so a lamp key you gave to one AI program is
 not quietly used by another. Use a different name in each program.
 
-If the server does not start, the program probably cannot find Node.js: programs started from the
-Finder do not see your shell's `PATH`. Run `which npx` in a terminal, use that full path as the
+If the server does not start, the program probably cannot find Node.js: on a Mac, programs started
+from the Finder do not see your shell's `PATH`. Run `which npx` in a terminal, use that full path as the
 command, and also put its folder on the entry's `PATH` — `npx` itself needs to find `node` there.
 In the JSON forms below that is one more line, for example:
 
@@ -162,7 +168,8 @@ For a lamp you have paired in the PlaiiinLight app, you create a key for the ass
 5. Create. The app shows a link and a QR code.
 
 Copy the link and tell the assistant to add the lamp; the server reads the link from the
-clipboard, so the key does not pass through the chat. A saved screenshot of the QR code works too.
+clipboard, so the key does not pass through the chat. A saved screenshot of the QR code works too. (Reading the clipboard works on macOS; elsewhere use the
+screenshot, or paste the link — a pasted link does pass through the chat.)
 
 The lamp itself enforces these permissions. You can change them, or revoke the key, in the app's
 Share tab at any time. An AI key cannot be used by the apps.
@@ -205,7 +212,8 @@ link into the chat yourself.
 
 With `--profile <name>`:
 
-- Keys: the macOS Keychain, service `plaiiin-lamp-mcp-<name>`, one entry per lamp.
+- Keys: the macOS Keychain, service `plaiiin-lamp-mcp-<name>`, one entry per lamp. On Linux and
+  Windows: `~/.plaiiin/lamps-<name>/secrets.json`, readable only by you.
 - `~/.plaiiin/lamps-<name>/fleet.json` — the lamps this profile knows. No secrets.
 - `~/.plaiiin/lamps-<name>/library/` — effects, images and scenes you saved to the local library.
 
@@ -235,7 +243,7 @@ cache (`~/.npm/_npx`) until you clear it. Optionally, for each profile you used:
 
 ```sh
 rm -rf ~/.plaiiin/lamps-<name>                                   # lamp list and library
-security delete-generic-password -s plaiiin-lamp-mcp-<name>      # repeat until none are left
+security delete-generic-password -s plaiiin-lamp-mcp-<name>      # macOS: repeat until none are left
 ```
 
 Revoke the AI keys themselves in the app's Share tab.
