@@ -11,10 +11,11 @@ const sh = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, 
 /** git against a bare repository. */
 const git = (bare: string, ...args: string[]) => sh(bare, ...args);
 const ls = (bare: string, ref: string) => git(bare, 'ls-tree', '-r', '--name-only', ref).split('\n');
-type Target = 'claudecode' | 'chatgpt';
+type Target = 'claudecode' | 'chatgpt' | 'npm';
 const LAYOUT = {
   claudecode: { dir: 'plugin', manifest: 'plugin/.claude-plugin/plugin.json' },
   chatgpt: { dir: 'plugin-chatgpt', manifest: 'plugin-chatgpt/.codex-plugin/plugin.json' },
+  npm: { dir: 'npm', manifest: 'npm/package.json' },
 } as const;
 const run = (repo: string, version: string, remote: string, target: string = 'claudecode') => {
   const r = spawnSync(script, [version, remote, target], { cwd: repo, env: ENV, encoding: 'utf8' });
@@ -35,7 +36,7 @@ function makeRepo(version: string, target: Target = 'claudecode'): string {
   const repo = mkdtempSync(join(tmpdir(), 'relrepo-'));
   sh(repo, 'init', '-q', '-b', 'source');
   setVersion(repo, version, target);
-  write(repo, '.gitignore', `node_modules/\n${dir}/dist/\n${dir}/skills/\n${dir}/THIRD-PARTY-NOTICES.txt\n`);
+  write(repo, '.gitignore', `node_modules/\n${dir}/dist/\n${dir}/skills/\n${dir}/THIRD-PARTY-NOTICES.txt\n${dir}/LICENSE\n`);
   write(repo, 'src/a.ts', 'export {};\n');
   write(repo, 'skills/x/SKILL.md', 'the shared source of the skill\n');
   sh(repo, 'add', '-A');
@@ -43,7 +44,9 @@ function makeRepo(version: string, target: Target = 'claudecode'): string {
   write(repo, `${dir}/dist/index.js`, '// bundle\n');
   write(repo, `${dir}/dist/preview-worker.mjs`, '// worker\n');
   write(repo, `${dir}/dist/chunks/extra.js`, '// a build output added later\n');
-  write(repo, `${dir}/skills/x/SKILL.md`, 'the shared source of the skill\n');
+  // the npm package ships no skills folder, but its own copy of the licence
+  if (target === 'npm') write(repo, `${dir}/LICENSE`, 'licence\n');
+  else write(repo, `${dir}/skills/x/SKILL.md`, 'the shared source of the skill\n');
   write(repo, `${dir}/THIRD-PARTY-NOTICES.txt`, 'notices\n');
   write(repo, 'node_modules/x/index.js', 'x\n');
   write(repo, 'scratch.txt', 'untracked, not a build output\n');
@@ -127,6 +130,29 @@ describe('release-commit.sh', () => {
     expect(bad.status).not.toBe(0);
     expect(bad.stderr).toContain('release-commit: version mismatch (tag 0.3.0, plugin.json 0.2.1, package.json 0.3.0)');
     rmSync(repo2, { recursive: true, force: true }); rmSync(remote2, { recursive: true, force: true });
+  });
+
+  it('npm release takes the package outputs and needs no skills', () => {
+    const repo2 = makeRepo('0.3.0', 'npm'), remote2 = makeRemote();
+    write(repo2, 'npm/bin/x.mjs', '// entry\n');
+    sh(repo2, 'add', 'npm/bin/x.mjs');
+    sh(repo2, 'commit', '-q', '-m', 'entry');
+    const r = run(repo2, '0.3.0', remote2, 'npm');
+    expect(r.stderr).toBe('');
+    expect(r.status).toBe(0);
+    const files = ls(remote2, 'main');
+    expect(files).toEqual(expect.arrayContaining([
+      'npm/package.json', 'npm/bin/x.mjs', 'npm/dist/index.js', 'npm/dist/preview-worker.mjs', 'npm/dist/chunks/extra.js',
+      'npm/THIRD-PARTY-NOTICES.txt', 'npm/LICENSE',
+    ]));
+    expect(files.some((f) => f.startsWith('npm/skills/'))).toBe(false);
+    // the licence copy is part of what gets published: without it the release is refused
+    const repo3 = makeRepo('0.3.0', 'npm'), remote3 = makeRemote();
+    rmSync(join(repo3, 'npm/LICENSE'));
+    const bad = run(repo3, '0.3.0', remote3, 'npm');
+    expect(bad.status).not.toBe(0);
+    expect(bad.stderr).toContain('release-commit: bundle missing');
+    for (const d of [repo2, remote2, repo3, remote3]) rmSync(d, { recursive: true, force: true });
   });
 
   it('refuses an unknown target', () => {
