@@ -75,6 +75,19 @@ describe('plugin packaging', () => {
     expect(png.length).toBeLessThan(2 * 1024 * 1024);
   });
 
+  it.skipIf(!hasClaude)('plugin.json carries what the plugin directory lists', () => {
+    const m = json(join(plugin, '.claude-plugin/plugin.json'));
+    expect(m.displayName).toBe('PlaiiinLight lamps');
+    expect(m.repository).toBe('https://github.com/nebeleben/plaiiin-light-claudecode');
+    for (const k of ['homepage', 'documentationUrl', 'supportUrl', 'privacyPolicyUrl']) expect(m[k], k).toMatch(/^https:\/\//);
+  });
+
+  it.skipIf(!hasClaude)('the plugin README says what the server talks to, stores and is built from', () => {
+    const readme = readFileSync(join(plugin, 'README.md'), 'utf8');
+    for (const s of ['plain HTTP and WebSocket', 'api.github.com', 'no telemetry', 'plaiiin-lamp-mcp', '~/.plaiiin/lamps',
+      'not minified', 'THIRD-PARTY-NOTICES.txt', 'Claude Code and Cowork']) expect(readme, s).toContain(s);
+  });
+
   it.skipIf(!hasClaude)('.mcp.json starts the bundled server', () => {
     const mcp = json(join(plugin, '.mcp.json'));
     expect(mcp.mcpServers.lamps).toEqual({ command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/dist/index.js'] });
