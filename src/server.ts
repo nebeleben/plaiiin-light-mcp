@@ -11,7 +11,7 @@ import { registerStreamTools } from './tools/stream';
 import { registerSwarmTools } from './tools/swarm';
 
 export const SERVER_NAME = 'plaiiin-lamps';
-export const SERVER_VERSION = '0.3.6';
+export const SERVER_VERSION = '0.3.7';
 
 const INSTRUCTIONS =
   'Controls PlaiiinLight lamps on the local network. Start with lamps_list (or lamps_discover to find lamps). ' +
