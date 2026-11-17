@@ -23,7 +23,9 @@ once per LED per frame. Work on one lamp first; copy to others only after the us
    frames, colours, nothing stuck or black (a warning appears when every frame is black). Fix and
    preview again until it looks right. Use enough frames/fps to see the motion (e.g. 16 frames at
    10 fps). When you show the user a preview, show this picture as it came back: it is sized for
-   viewing. Do not redraw the frames yourself at lamp resolution — a 16×16 image is a speck.
+   viewing. Do not redraw the frames yourself at lamp resolution — a 16×16 image is a speck. If you
+   must make your own picture (a single frame, a file to hand over), enlarge it the same way: every
+   lamp pixel a square block, no smoothing, at least 256 px on the long side.
 5. **`effect_validate`** on the lamp (its own validator, nothing stored), then **`effect_compile`**
    (reports `bytecodeBytes`). On `{valid: false, error}` fix the script with the lamp's error text
    and go back to step 4.
