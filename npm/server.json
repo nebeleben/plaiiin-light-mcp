@@ -3,7 +3,7 @@
   "name": "io.github.nebeleben/plaiiinlight-mcp",
   "title": "PlaiiinLight lamps",
   "description": "Control PlaiiinLight LED lamps on your local network: colour, effects, images, scenes, firmware.",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "websiteUrl": "https://plaiiin-light.com/integrations.html#mcp",
   "repository": {
     "url": "https://github.com/nebeleben/plaiiin-light-mcp",
@@ -23,7 +23,7 @@
     {
       "registryType": "npm",
       "identifier": "plaiiinlight-mcp",
-      "version": "0.3.7",
+      "version": "0.3.8",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

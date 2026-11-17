@@ -1,6 +1,6 @@
 {
   "name": "plaiiin-lamp-mcp",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "private": true,
   "description": "Local MCP server (stdio) that lets an AI assistant control PlaiiinLight lamps on the LAN",
   "type": "module",
