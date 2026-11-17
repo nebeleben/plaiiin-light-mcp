@@ -37,6 +37,12 @@ with your `label` and the result returns its `id`; an identical image already sa
 (`reused: true`). The lamp holds about 30 images (`images_list` shows `count`/`max`); when full the
 image is drawn but not saved — ask the user which one to delete.
 
+**Showing the user a picture of it.** A lamp-sized picture (16×16 pixels, say) is a speck on a
+screen. Whenever you show the user a picture you made yourself — a preview before drawing, or a
+copy of what you drew — enlarge it first: every lamp pixel a square block (nearest neighbour, no
+smoothing), at least 256 px on the long side. `image_get` already returns saved images enlarged
+like that; show its picture as it came back.
+
 Then ask whether it looks right and adjust. To keep a copy on this computer use
 `library_save_image`; `library_push_image` / `image_copy` put it on other lamps with the same grid.
 
@@ -44,7 +50,7 @@ Then ask whether it looks right and adjust. To keep a copy on this computer use
 
 - `images_list` — saved images with `id`, `label`, size and `fitsGrid`. Ids (`img-001`, …) are per
   lamp: the same id on two lamps is usually a different picture.
-- `image_get` — returns a saved image as a PNG so you can look at it.
+- `image_get` — returns a saved image as an enlarged PNG (about 256 px) so you and the user can look at it.
 - `image_show` — show a saved image (frame mode).
 - `image_label` — rename a saved image (scenes keep working; they use the id).
 - `image_delete` — two-step (see below); scenes that show the image can't be activated afterwards,
